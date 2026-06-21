@@ -98,7 +98,7 @@ class SlotExtractor
         $currentStatus = $state['optional_collection_status'] ?? 'not_asked';
         $rawMessage = $nlu['raw_message'] ?? '';
 
-        if ($currentStatus === 'asked' && ! isset($nlu['optional_collection_status'])) {
+        if ($currentStatus === 'asked' && (! isset($nlu['optional_collection_status']) || $nlu['optional_collection_status'] === 'asked')) {
             if ($nlu['intent'] !== 'system_error') {
                 if ($this->isDeclineResponse($rawMessage)) {
                     $state['optional_collection_status'] = 'declined';
@@ -250,6 +250,10 @@ class SlotExtractor
             return $num;
         }
 
+        if (is_array($price)) {
+            $price = $price['amount'] ?? $price['value'] ?? $price['min'] ?? (string) ($price[0] ?? '0');
+        }
+
         $raw = trim((string) $price);
 
         // Handle Arabic-Indic digits (٠-٩) before any parsing
@@ -321,12 +325,23 @@ class SlotExtractor
     private function isDeclineResponse(string $message): bool
     {
         $normalized = trim(strtolower($message));
-        // Exact short declines
-        if (in_array($normalized, ['no', 'n', 'nah', 'nope', 'no thanks', 'no thank you', 'not now', 'skip', 'none', 'nothing', 'no preferences', 'no preference', 'no prefs'], true)) {
+        // Exact short declines (English + Arabic/Egyptian colloquial)
+        $exact = [
+            'no', 'n', 'nah', 'nope', 'no thanks', 'no thank you', 'not now',
+            'skip', 'none', 'nothing', 'no preferences', 'no preference', 'no prefs',
+            'لا', 'لا شكرا', 'لا شكراً', 'مش عايز', 'مش عايزة',
+            'ولا حاجة', 'ولا ايه', 'ولا أي حاجة', 'ولا اي حاجة',
+            'مش مهم', 'خلاص', 'كفاية', 'مفيش', 'من غير', 'انا كويس',
+        ];
+        if (in_array($normalized, $exact, true)) {
             return true;
         }
         // Pattern: "i don't have/need/want ..."
         if (preg_match('/\b(no|don\'t|dont|do not|not)\b.*\b(have|need|want|prefer|care|mind)\b/i', $message)) {
+            return true;
+        }
+        // Arabic pattern: مش/ما/لا + want/need/have/important
+        if (preg_match('/\b(مش|ما|لا)\s*(عايز|عايزة|احتاج|أحتاج|مهم|نفسي|عندي)\b/u', $message)) {
             return true;
         }
         return false;

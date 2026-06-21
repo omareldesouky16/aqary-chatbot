@@ -190,7 +190,19 @@ class IntentDetectionService
             return $this->trans('messages.property_reference.unresolved', [], $locale);
         }
 
+        if ($nlu['intent'] === 'chitchat') {
+            if ($this->hasSearchResults($state)) {
+                return $this->searchResultReply($state);
+            }
+            return $this->trans('messages.chitchat', [], $locale);
+        }
 
+        if ($nlu['intent'] === 'unclear') {
+            if ($this->hasSearchResults($state)) {
+                return $this->searchResultReply($state);
+            }
+            return $this->trans('messages.unclear', [], $locale);
+        }
 
         $searchStatus = $state['search']['status'] ?? null;
         if ($searchStatus === 'results') {
@@ -225,15 +237,34 @@ class IntentDetectionService
             return $this->trans('messages.saved_preferences_checkin', [], $locale);
         }
 
-        if ($nlu['intent'] === 'chitchat') {
-            return $this->trans('messages.chitchat', [], $locale);
-        }
-
-        if ($nlu['intent'] === 'unclear') {
-            return $this->trans('messages.unclear', [], $locale);
-        }
-
         return $this->trans('messages.saved_preferences', [], $locale);
+    }
+
+    private function hasSearchResults(array $state): bool
+    {
+        return in_array($state['search']['status'] ?? null, ['results', 'budget_fallback', 'no_results', 'exhausted'], true);
+    }
+
+    private function searchResultReply(array $state): string
+    {
+        $locale = $this->detectLanguage($state);
+        $status = $state['search']['status'] ?? null;
+
+        return match ($status) {
+            'results' => (function () use ($state, $locale): string {
+                $count = count($state['search']['result_items'] ?? $state['shown_properties'] ?? []);
+                $more = ! empty($state['search']['has_more']) ? $this->trans('messages.search.results_more', [], $locale) : '';
+                return $this->trans('messages.search.results', ['count' => $count, 'more' => $more], $locale);
+            })(),
+            'budget_fallback' => (function () use ($state, $locale): string {
+                $minimum = $state['search']['min_price_fallback'] ?? null;
+                $minText = $minimum !== null ? $this->trans('messages.search.budget_fallback_minimum', ['minimum' => $minimum], $locale) : '';
+                return $this->trans('messages.search.budget_fallback', ['minimum' => $minText], $locale);
+            })(),
+            'no_results' => $this->trans('messages.search.no_results', [], $locale),
+            'exhausted' => $this->trans('messages.search.exhausted', [], $locale),
+            default => $this->trans('messages.search.no_results', [], $locale),
+        };
     }
 
     private function detectLanguage(array $state): string
@@ -291,14 +322,8 @@ class IntentDetectionService
     {
         return <<<'PROMPT'
 Classify the authenticated real estate chat turn as JSON only.
-Allowed intents: 
-- search_property: user is searching for properties or providing search criteria (like area, price, etc.)
-- show_more_results: user wants to see more results
-- property_details: user is ASKING for more details about a specific property already shown (e.g., "ask about a shown one")
-- show_property_photos: user wants to see photos of a property
-- seller_contact: user wants to contact the seller
-- complaint, installment_redirect, chitchat, unclear.
-Extract required slots propertyType (Allowed: Apartment, Villa, House, Studio, Townhouse), location, and price, plus optional area, bedrooms, bathrooms, and features.
+Allowed intents: search_property, show_more_results, property_details, show_property_photos, seller_contact, complaint, installment_redirect, chitchat, unclear.
+Extract required slots propertyType, location, and price, plus optional area, bedrooms, bathrooms, and features.
 When the buyer provides a numeric budget without currency, default it to EGP.
 Ask one grouped optional question after all required slots are complete.
 Emit resolution-friendly raw preference phrases when the buyer wording needs canonical mapping.

@@ -9,9 +9,18 @@ class OpenRouterService
 {
     public function chatJson(array $messages, float $temperature = 0.2): array
     {
-        $endpoint = rtrim((string) config('services.openrouter.base_url', env('OPENROUTER_BASE_URL')), '/') . '/chat/completions';
+        // Prefer FreeModel.dev if API key is set, otherwise fall back to OpenRouter
+        $provider = ! empty(config('services.freemodel.key'))
+            ? 'freemodel'
+            : 'openrouter';
+
+        $endpoint = rtrim((string) config("services.$provider.base_url"), '/') . '/chat/completions';
+        $apiKey = $provider === 'freemodel'
+            ? (string) config('services.freemodel.key')
+            : (string) env('OPENROUTER_API_KEY');
+
         $body = [
-            'model' => config('services.openrouter.model', env('OPENROUTER_MODEL', 'qwen/qwen3-235b-a22b:free')),
+            'model' => (string) config("services.$provider.model", 'gpt-5.5'),
             'temperature' => $temperature,
             'messages' => $messages,
             'response_format' => ['type' => 'json_object'],
@@ -19,7 +28,7 @@ class OpenRouterService
 
         for ($attempt = 1; $attempt <= 3; $attempt++) {
             try {
-                $response = Http::withToken((string) env('OPENROUTER_API_KEY'))
+                $response = Http::withToken($apiKey)
                     ->timeout(30)
                     ->acceptJson()
                     ->retry(2, 1000)
