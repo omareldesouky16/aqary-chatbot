@@ -86,6 +86,19 @@ class OpenRouterService
             ];
         }, $properties);
 
+        // Prevent LLM API timeouts by stripping massive arrays from the state
+        $safeState = $state;
+        unset($safeState['search']['ranking_scores'], $safeState['search']['result_items']);
+        if (isset($safeState['shown_properties']) && is_array($safeState['shown_properties'])) {
+            $safeState['shown_properties'] = array_map(function($prop) {
+                return [
+                    'id' => $prop['id'] ?? null,
+                    'position' => $prop['position'] ?? null,
+                    'title' => $prop['title'] ?? null,
+                ];
+            }, $safeState['shown_properties']);
+        }
+
         return [
             [
                 'role' => 'system',
@@ -94,7 +107,7 @@ class OpenRouterService
             [
                 'role' => 'user',
                 'content' => json_encode([
-                    'search_state' => $state,
+                    'search_state' => $safeState,
                     'properties' => $safeProperties,
                     'ask_about_photos' => true,
                 ], JSON_THROW_ON_ERROR),
@@ -109,6 +122,19 @@ class OpenRouterService
     {
         unset($detail['seller_phone']);
 
+        // Prevent LLM API timeouts by stripping massive arrays from the state
+        $safeState = $state;
+        unset($safeState['search']['ranking_scores'], $safeState['search']['result_items']);
+        if (isset($safeState['shown_properties']) && is_array($safeState['shown_properties'])) {
+            $safeState['shown_properties'] = array_map(function($prop) {
+                return [
+                    'id' => $prop['id'] ?? null,
+                    'position' => $prop['position'] ?? null,
+                    'title' => $prop['title'] ?? null,
+                ];
+            }, $safeState['shown_properties']);
+        }
+
         return [
             [
                 'role' => 'system',
@@ -117,7 +143,7 @@ class OpenRouterService
             [
                 'role' => 'user',
                 'content' => json_encode([
-                    'chat_state' => $state,
+                    'chat_state' => $safeState,
                     'property_detail' => $detail,
                     'missing_fields' => $detail['missing_fields'] ?? [],
                 ], JSON_THROW_ON_ERROR),

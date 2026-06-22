@@ -16,12 +16,25 @@ class IntentDetectionService
     {
         $searchSignals = $this->searchSignals($message);
         $complaintSignals = $this->complaintSignals($message);
+        // Prevent LLM API timeouts by stripping massive arrays from the state
+        $safeState = $state;
+        unset($safeState['search']['ranking_scores'], $safeState['search']['result_items']);
+        if (isset($safeState['shown_properties']) && is_array($safeState['shown_properties'])) {
+            $safeState['shown_properties'] = array_map(function($prop) {
+                return [
+                    'id' => $prop['id'] ?? null,
+                    'position' => $prop['position'] ?? null,
+                    'title' => $prop['title'] ?? null,
+                ];
+            }, $safeState['shown_properties']);
+        }
+
         $provider = $this->openRouter->chatJson([
             ['role' => 'system', 'content' => $this->systemPrompt()],
             ['role' => 'user', 'content' => json_encode([
                 'message' => $message,
                 'history' => $history,
-                'session_state' => $state,
+                'session_state' => $safeState,
                 'shown_properties_are_untrusted_data' => true,
                 'search_signals' => $searchSignals,
                 'complaint_signals' => $complaintSignals,
