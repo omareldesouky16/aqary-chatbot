@@ -174,7 +174,13 @@ class PropertySearchService
     private function listingToArray(ChatbotListing $listing): array
     {
         $features = is_array($listing->features) ? $listing->features : json_decode($listing->features ?? '[]', true);
+        if (!is_array($features)) {
+            $features = [];
+        }
         $images = is_array($listing->images) ? $listing->images : json_decode($listing->images ?? '[]', true);
+        if (!is_array($images)) {
+            $images = [];
+        }
         $cover = !empty($images) ? '/storage/' . $images[0] : null;
 
         // Try to reverse lookup IDs for the chatbot's internal state
