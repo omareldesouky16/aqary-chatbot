@@ -207,9 +207,16 @@ class SlotExtractor
         $currentLocationId = $state['slots']['location_id'] ?? null;
         $currentLocationName = $state['slots']['location'] ?? null;
 
-        return (! empty($slots['propertyType']) && $currentType !== null && strcasecmp((string) $slots['propertyType'], (string) $currentType) !== 0)
+        $extractStr = function(mixed $val): string {
+            if (is_array($val)) {
+                return (string) ($val['value'] ?? $val['amount'] ?? $val['name'] ?? $val[0] ?? '');
+            }
+            return (string) $val;
+        };
+
+        return (! empty($slots['propertyType']) && $currentType !== null && strcasecmp($extractStr($slots['propertyType']), (string) $currentType) !== 0)
             || (! empty($slots['location_id']) && $currentLocationId !== null && (int) $slots['location_id'] !== (int) $currentLocationId)
-            || (! empty($slots['location']) && $currentLocationName !== null && $currentLocationId === null && strcasecmp((string) $slots['location'], (string) $currentLocationName) !== 0);
+            || (! empty($slots['location']) && $currentLocationName !== null && $currentLocationId === null && strcasecmp($extractStr($slots['location']), (string) $currentLocationName) !== 0);
     }
 
     private function resetSearchSpecificState(array $state): array

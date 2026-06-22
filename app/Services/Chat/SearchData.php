@@ -63,6 +63,14 @@ final class SearchData
 
         $budget = (int) $price;
 
+        $extractInt = function(mixed $val): ?int {
+            if (is_array($val)) {
+                $v = $val['value'] ?? $val['amount'] ?? $val['count'] ?? $val[0] ?? null;
+                return is_numeric($v) ? (int) $v : null;
+            }
+            return is_numeric($val) ? (int) $val : null;
+        };
+
         return new self(
             sessionId: (string) ($state['session_id'] ?? ''),
             propertyTypeId: (int) ($propertyType['canonical_id'] ?? 0),
@@ -71,9 +79,9 @@ final class SearchData
             locationName: (string) ($location['canonical_name'] ?? $slots['location'] ?? ''),
             maxBudget: $budget,
             budgetWindowMax: (int) ceil($budget * 1.2),
-            area: isset($slots['area']) && is_numeric($slots['area']) ? (int) $slots['area'] : null,
-            bedrooms: isset($slots['bedrooms']) && is_numeric($slots['bedrooms']) ? (int) $slots['bedrooms'] : null,
-            bathrooms: isset($slots['bathrooms']) && is_numeric($slots['bathrooms']) ? (int) $slots['bathrooms'] : null,
+            area: isset($slots['area']) ? $extractInt($slots['area']) : null,
+            bedrooms: isset($slots['bedrooms']) ? $extractInt($slots['bedrooms']) : null,
+            bathrooms: isset($slots['bathrooms']) ? $extractInt($slots['bathrooms']) : null,
             featureIds: array_values(array_unique($featureIds)),
             featureNames: array_values(array_unique($featureNames)),
             language: $state['language'] ?? null,

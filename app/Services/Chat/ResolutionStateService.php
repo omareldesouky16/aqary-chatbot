@@ -12,15 +12,44 @@ class ResolutionStateService
     ) {
     }
 
+    private function extractString(mixed $value): string
+    {
+        if (is_array($value)) {
+            return (string) ($value['value'] ?? $value['amount'] ?? $value['name'] ?? $value[0] ?? '');
+        }
+        return (string) $value;
+    }
+
+    private function extractStringArray(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return array_filter([$this->extractString($value)]);
+        }
+        
+        // If it's an associative array like ['value' => 'pool'], extract it
+        if (isset($value['value'])) {
+            return [(string) $value['value']];
+        }
+
+        $result = [];
+        foreach ($value as $item) {
+            $str = $this->extractString($item);
+            if ($str !== '') {
+                $result[] = $str;
+            }
+        }
+        return $result;
+    }
+
     public function apply(array $state, array $nlu): array
     {
         $state = array_replace_recursive(SlotExtractor::emptyState((string) ($state['session_id'] ?? '')), $state);
         $resolution = $state['resolution'] ?? ResolutionData::emptyState();
         $reviewItemIds = $resolution['review_item_ids'] ?? [];
 
-        $propertyTypeRaw = (string) ($state['slots']['propertyType'] ?? '');
-        $locationRaw = (string) ($state['slots']['location'] ?? '');
-        $featuresRaw = $state['slots']['features'] ?? [];
+        $propertyTypeRaw = $this->extractString($state['slots']['propertyType'] ?? '');
+        $locationRaw = $this->extractString($state['slots']['location'] ?? '');
+        $featuresRaw = $this->extractStringArray($state['slots']['features'] ?? []);
 
         $propertyTypeOutcome = $propertyTypeRaw !== '' ? $this->propertyTypes->resolve($propertyTypeRaw) : ResolutionData::outcome('propertyType', 'unresolved', null, null, null, null, [], true);
         $locationOutcome = $locationRaw !== '' ? $this->locations->resolve($locationRaw) : ResolutionData::outcome('location', 'unresolved', null, null, null, null, [], true);

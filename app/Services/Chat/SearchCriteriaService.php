@@ -14,6 +14,20 @@ class SearchCriteriaService
         return ($this->fromState($state)?->isReady()) ?? false;
     }
 
+    public function __construct(
+        private readonly LocationResolutionService $locations,
+        private readonly PropertyTypeResolutionService $propertyTypes,
+    ) {
+    }
+
+    private function extractString(mixed $value): string
+    {
+        if (is_array($value)) {
+            return (string) ($value['value'] ?? $value['amount'] ?? $value['name'] ?? $value[0] ?? '');
+        }
+        return (string) $value;
+    }
+
     public function digest(array $state): ?string
     {
         return $this->fromState($state)?->digest();
@@ -32,11 +46,11 @@ class SearchCriteriaService
             return false;
         }
 
-        if (! empty($slots['propertyType']) && strcasecmp((string) $slots['propertyType'], $current->propertyTypeName) !== 0) {
+        if (! empty($slots['propertyType']) && strcasecmp($this->extractString($slots['propertyType']), $current->propertyTypeName) !== 0) {
             return true;
         }
 
-        if (! empty($slots['location']) && strcasecmp((string) $slots['location'], $current->locationName) !== 0) {
+        if (! empty($slots['location']) && strcasecmp($this->extractString($slots['location']), $current->locationName) !== 0) {
             return true;
         }
 
