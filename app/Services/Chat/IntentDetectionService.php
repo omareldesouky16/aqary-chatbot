@@ -51,6 +51,14 @@ class IntentDetectionService
             $validated['intent'] = 'search_property';
         }
 
+        // If the LLM misclassifies a general request as a property action when no properties are available
+        if (in_array($validated['intent'], ['property_details', 'show_property_photos', 'seller_contact'], true) 
+            && empty($state['shown_properties']) 
+            && empty($validated['user_reference']) 
+            && empty($validated['resolved_property_id'])) {
+            $validated['intent'] = 'search_property';
+        }
+
         // Server-side property reference extraction when LLM didn't fill user_reference or resolved_property_id
         if (in_array($validated['intent'], ['property_details', 'show_property_photos', 'seller_contact'], true)) {
             $ref = trim((string) ($validated['user_reference'] ?? ''));
