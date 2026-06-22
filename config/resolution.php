@@ -72,11 +72,11 @@ return [
         ['canonical_id' => 53, 'canonical_name' => 'Kafr El Sheikh', 'aliases' => ['kafr el sheikh', 'كفر الشيخ']],
     ],
     'property_types' => [
-        ['canonical_id' => 101, 'canonical_name' => 'Apartment', 'aliases' => ['apartment', 'flat', 'شقة', 'shaqa']],
-        ['canonical_id' => 102, 'canonical_name' => 'Villa', 'aliases' => ['villa', 'فيلا']],
-        ['canonical_id' => 103, 'canonical_name' => 'House', 'aliases' => ['house', 'home', 'منزل', 'بيت']],
-        ['canonical_id' => 104, 'canonical_name' => 'Studio', 'aliases' => ['studio', 'استوديو', 'ستوديو']],
-        ['canonical_id' => 105, 'canonical_name' => 'Townhouse', 'aliases' => ['townhouse', 'town house', 'تاون هاوس']],
+        ['canonical_id' => 101, 'canonical_name' => 'apartment', 'aliases' => ['apartment', 'flat', 'شقة', 'shaqa']],
+        ['canonical_id' => 102, 'canonical_name' => 'villa', 'aliases' => ['villa', 'فيلا']],
+        ['canonical_id' => 103, 'canonical_name' => 'house', 'aliases' => ['house', 'home', 'منزل', 'بيت']],
+        ['canonical_id' => 104, 'canonical_name' => 'studio', 'aliases' => ['studio', 'استوديو', 'ستوديو']],
+        ['canonical_id' => 105, 'canonical_name' => 'townhouse', 'aliases' => ['townhouse', 'town house', 'تاون هاوس']],
     ],
     'features' => [
         ['canonical_id' => 201, 'canonical_name' => 'Security 24/7', 'aliases' => ['security', 'security 24/7', 'secure', 'امن', 'أمان', 'حراسة', 'security service']],
