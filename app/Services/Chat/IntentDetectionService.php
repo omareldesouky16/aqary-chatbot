@@ -51,6 +51,27 @@ class IntentDetectionService
             $validated['intent'] = 'search_property';
         }
 
+        // Server-side property reference extraction when LLM didn't fill user_reference or resolved_property_id
+        if (in_array($validated['intent'], ['property_details', 'show_property_photos', 'seller_contact'], true)) {
+            $ref = trim((string) ($validated['user_reference'] ?? ''));
+            if ($ref === '') {
+                $ref = $this->extractPropertyReference($message);
+                if ($ref !== null) {
+                    $validated['user_reference'] = $ref;
+                }
+            }
+            // If position reference (e.g. "1", "first") and we have shown_properties, resolve to ID
+            if ($ref !== null && is_numeric($ref) && ! empty($state['shown_properties'])) {
+                $pos = (int) $ref;
+                foreach ($state['shown_properties'] as $prop) {
+                    if ((int) ($prop['position'] ?? 0) === $pos) {
+                        $validated['resolved_property_id'] = (int) ($prop['id'] ?? 0);
+                        break;
+                    }
+                }
+            }
+        }
+
         if (($complaintSignals['explicit_complaint'] ?? false) || ($complaintSignals['frustration_detected'] ?? false)) {
             $validated['intent'] = 'complaint';
             $validated['flags']['explicit_complaint'] = $complaintSignals['explicit_complaint'];
@@ -265,6 +286,33 @@ class IntentDetectionService
             'exhausted' => $this->trans('messages.search.exhausted', [], $locale),
             default => $this->trans('messages.search.no_results', [], $locale),
         };
+    }
+
+    private function extractPropertyReference(string $message): ?string
+    {
+        $n = strtolower(trim($message));
+
+        // Ordinal / position references
+        if (preg_match('/\b(the\s+)?(first|1st|one|1)\b/i', $n)) return '1';
+        if (preg_match('/\b(the\s+)?(second|2nd|two|2)\b/i', $n)) return '2';
+        if (preg_match('/\b(the\s+)?(third|3rd|three|3)\b/i', $n)) return '3';
+        if (preg_match('/\b(the\s+)?(fourth|4th|four|4)\b/i', $n)) return '4';
+        if (preg_match('/\b(the\s+)?(fifth|5th|five|5|last)\b/i', $n)) return '5';
+
+        // Generic references (it, this, this property, etc.)
+        if (preg_match('/\b(it|this|that|this property|that property|this listing|that listing|the property|the listing)\b/i', $n)) return 'this';
+
+        // Arabic position
+        if (preg_match('/\b(الأول|اول|واحد|١|1)\b/u', $n)) return '1';
+        if (preg_match('/\b(الثاني|ثاني|اتنين|٢)\b/u', $n)) return '2';
+        if (preg_match('/\b(الثالث|تالت|٣)\b/u', $n)) return '3';
+        if (preg_match('/\b(الرابع|رابع|٤)\b/u', $n)) return '4';
+        if (preg_match('/\b(الخامس|خامس|٥|اخر|آخر)\b/u', $n)) return '5';
+
+        // Arabic generic: ده, دا, العقار ده, etc.
+        if (preg_match('/\b(ده|دا|دي|العقار|الليلة|اللي)\b/u', $n)) return 'this';
+
+        return null;
     }
 
     private function detectLanguage(array $state): string

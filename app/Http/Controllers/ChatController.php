@@ -40,6 +40,7 @@ class ChatController extends Controller
 
     public function chat(Request $request): JsonResponse
     {
+        set_time_limit(120);
         $validated = $request->validate([
             'session_id' => ['required', 'uuid'],
             'message' => ['required', 'string', 'min:1'],
@@ -61,6 +62,16 @@ class ChatController extends Controller
 
         $history = $this->logs->promptHistory($session->session_id);
         $nlu = $this->intent->detect($validated['message'], $history, $state);
+
+        // Server-side property reference: resolve position from message to property ID
+        if (in_array($nlu['intent'] ?? '', ['property_details', 'show_property_photos', 'seller_contact'], true)) {
+            if (empty($nlu['resolved_property_id']) && empty(trim((string) ($nlu['user_reference'] ?? '')))) {
+                $ref = $this->extractPropertyReference($validated['message'], $state['shown_properties'] ?? []);
+                if ($ref !== null) {
+                    $nlu['resolved_property_id'] = $ref;
+                }
+            }
+        }
 
         $state = $this->slots->merge($state, $nlu);
         $state = $this->complaints->apply($state, $nlu['flags'] ?? []);
@@ -125,7 +136,7 @@ class ChatController extends Controller
         }
         if ($awaitingSlots === ['optional_preferences'] && ($state['optional_collection_status'] ?? 'not_asked') === 'not_asked') {
             $state['optional_collection_status'] = 'asked';
-            $state = SlotCollectionState::hydrate($state);
+        $state = SlotCollectionState::hydrate($state);
             $awaitingSlots = $this->slots->awaitingSlots($state);
         }
 
@@ -198,5 +209,39 @@ class ChatController extends Controller
             'session_id' => $session->session_id,
             'fallback' => (bool) ($nlu['fallback'] ?? false),
         ]);
+    }
+
+    /**
+     * Extract property reference from user message and resolve to a property ID.
+     */
+    private function extractPropertyReference(string $message, array $shownProperties): ?int
+    {
+        $n = strtolower(trim($message));
+
+        $position = match (true) {
+            preg_match('/\b(the\s+)?(first|1st|one|1)\b/i', $n) === 1 => 1,
+            preg_match('/\b(the\s+)?(second|2nd|two|2)\b/i', $n) === 1 => 2,
+            preg_match('/\b(the\s+)?(third|3rd|three|3)\b/i', $n) === 1 => 3,
+            preg_match('/\b(the\s+)?(fourth|4th|four|4)\b/i', $n) === 1 => 4,
+            preg_match('/\b(the\s+)?(fifth|5th|five|5|last)\b/i', $n) === 1 => 5,
+            preg_match('/\b(الأول|اول|واحد|١)\b/u', $n) === 1 => 1,
+            preg_match('/\b(الثاني|ثاني|اتنين|٢)\b/u', $n) === 1 => 2,
+            preg_match('/\b(الثالث|تالت|٣)\b/u', $n) === 1 => 3,
+            preg_match('/\b(الرابع|رابع|٤)\b/u', $n) === 1 => 4,
+            preg_match('/\b(الخامس|خامس|٥|اخر|آخر)\b/u', $n) === 1 => 5,
+            default => null,
+        };
+
+        if ($position === null) {
+            return null;
+        }
+
+        foreach ($shownProperties as $prop) {
+            if ((int) ($prop['position'] ?? 0) === $position) {
+                return (int) ($prop['id'] ?? 0);
+            }
+        }
+
+        return null;
     }
 }
