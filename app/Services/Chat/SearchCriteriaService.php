@@ -14,11 +14,7 @@ class SearchCriteriaService
         return ($this->fromState($state)?->isReady()) ?? false;
     }
 
-    public function __construct(
-        private readonly LocationResolutionService $locations,
-        private readonly PropertyTypeResolutionService $propertyTypes,
-    ) {
-    }
+
 
     private function extractString(mixed $value): string
     {
