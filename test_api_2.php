@@ -16,5 +16,5 @@ function send_chat($msg) {
 echo "Sending first message...\n";
 echo send_chat('I want an apartment in smouha for 1 million');
 echo "\n\nSending second message...\n";
-echo send_chat('500m');
+echo send_chat('3 bedrooms');
 echo "\n";

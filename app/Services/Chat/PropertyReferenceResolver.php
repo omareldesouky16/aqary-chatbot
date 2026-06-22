@@ -176,7 +176,14 @@ class PropertyReferenceResolver
     private function listingToReference(ChatbotListing $listing): array
     {
         $features = is_array($listing->features) ? $listing->features : json_decode($listing->features ?? '[]', true);
+        if (! is_array($features)) {
+            $features = is_string($features) ? array_map('trim', explode(',', $features)) : [];
+        }
+        
         $images = is_array($listing->images) ? $listing->images : json_decode($listing->images ?? '[]', true);
+        if (! is_array($images)) {
+            $images = is_string($images) ? array_map('trim', explode(',', $images)) : [];
+        }
         $cover = !empty($images) ? '/storage/' . $images[0] : null;
 
         return [

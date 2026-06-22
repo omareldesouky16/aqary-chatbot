@@ -15,6 +15,9 @@ class PropertyDetailService
         $listing = $this->loadListing((int) ($property['id'] ?? 0));
         if ($listing instanceof ChatbotListing) {
             $features = is_array($listing->features) ? $listing->features : json_decode($listing->features ?? '[]', true);
+            if (! is_array($features)) {
+                $features = is_string($features) ? array_map('trim', explode(',', $features)) : [];
+            }
             $property = array_replace($property, [
                 'title' => $listing->title,
                 'url' => 'http://localhost/properties/' . $listing->id,
